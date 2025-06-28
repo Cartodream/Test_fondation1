@@ -1,0 +1,785 @@
+
+
+<!DOCTYPE html>
+<html>
+	<head>
+		
+		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+		<title> Carte interactive </title>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+		<!--[if lte IE 8]>
+			<script>alert("Your web browser does not work well with this application. Please upgrade it or choose another browser.");</script>
+		<![endif]-->
+		
+		<link rel="stylesheet" href="css/foundation.min.css">
+		<link rel="stylesheet" href="css/lightbox.css">
+		<link rel="stylesheet" href="css/normalize.css">
+		<!-- https://unpkg.com/leaflet@0.7.3/dist/leaflet.css -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+		<!-- https://unpkg.com/leaflet.markercluster@1.0.0/dist/MarkerCluster.css -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+		<!-- https://unpkg.com/leaflet.markercluster@1.0.0/dist/MarkerCluster.Default.css -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+		<link rel="stylesheet" href="css/style.css">
+		<!-- Installation Plugin Leaflet Draw CSS -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw-src.css">
+		
+		
+		<!-- https://unpkg.com/leaflet@0.7.3/dist/leaflet-src.js -->
+		<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet-src.js"></script>
+		<!-- https://unpkg.com/leaflet.markercluster@1.0.0/dist/leaflet.markercluster-src.js -->
+		<script src="script/leaflet.markercluster-src.js"></script>
+		<!-- Installation Plugin Leaflet Draw JS -->
+		<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw-src.js"></script>
+
+		<!-- Installation Easy Button -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+		<script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+		<script src="script/jquery.js"></script>
+	<script src="script/lightbox.js"></script>
+		<!-- Fuzzysearch : https://github.com/stefanocudini/leaflet-search -->
+		<!-- <link rel="stylesheet" href="https://unpkg.com/leaflet-search@2.9.8/dist/leaflet-search.src.css"> -->
+		<!-- https://unpkg.com/leaflet-search@2.9.8/dist/leaflet-search.src.css -->
+		<!-- <script src="https://unpkg.com/leaflet-search@2.9.8/dist/leaflet-search.src.js"></script> -->
+		<!-- https://unpkg.com/leaflet-search@2.9.8/dist/leaflet-search.src.js -->
+
+		<!-- JSDELIVR : https://github.com/jsdelivr/jsdelivr#usage -->
+			<!-- https://github.com/jsdelivr/jsdelivr#github -->
+
+		<!-- Chargement de Leaflet-FuseSearch -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/1.2.2/fuse.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/gh/naomap/leaflet-fusesearch@1e356c69b2b77e76b8931ded3efe27992ea47a0c/src/leaflet.fusesearch.js"></script>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/naomap/leaflet-fusesearch@1e356c69b2b77e76b8931ded3efe27992ea47a0c/src/leaflet.fusesearch.css">
+
+		<!-- on rajoute la librairie Leaflet Fuse Search car Leaflet Search n'a pas la fonction de recherche voulue -->
+
+		<!--on laisse celui la pour l'instant -->
+
+	
+	
+		
+	
+		
+		<script type="text/javascript" src="donnees/POI.js"></script>
+	<script type="text/javascript" src="script/init-layers.js"></script>
+		<script type="text/javascript" src="donnees/fond.js"></script>
+		<script type="text/javascript" src="donnees/rivieres.js"></script>
+		<script type="text/javascript" src="donnees/COMMUNE_0.js"></script>
+		
+		
+		<script>
+	
+
+		</script>
+		<script>
+		popupOptions = {minWidth:350, maxWidth:350, maxHeight:400, closeButton:true}; //on défini la largeur max des popups à 400 pixels
+		var map;
+		var markers = L.markerClusterGroup(); // initialisation de la variable pour les clusters
+		var rivieresLayer = null;
+		var rivieresVisible = true;
+		
+		// création de deux tableaux vides pour récupérer l'ensemble des années et catégories et gérer leur sélection/désélection
+		var tabCategories = new Array();
+		var poiLayers = new Array(); // tableau qui contiendra les features (données GeoJSON d'un point) et leur marker associé
+		var routeLayers = new Array();
+		
+		// Fonction pour créer et gérer la couche des rivières
+		function setupRivieresLayer() {
+			// Style pour les rivières
+			function riviereStyle() {
+				return {
+					"color": "#0078FF",
+					"weight": 4,
+					"opacity": 0.8,
+					"fillOpacity": 0
+				};
+			}
+			
+			// Contenu des popups pour les rivières
+			function onEachRiviere(feature, layer) {
+				var popupContent = "";
+				if (feature.properties && feature.properties.nom) {
+					popupContent += '<b><font size="4pt"><center>'+feature.properties.nom+'</center></font></b><br>';
+					
+					if (feature.properties && feature.properties.photo) {
+						// Création d'un identifiant unique pour le diaporama basé sur l'ID de l'entité
+					var lightboxId = "poi-" + feature.properties.id;
+					
+					// Dans le popup, on affiche uniquement la première photo de "photo"
+					popupContent += '<a class="example-image-link" href="'+feature.properties.photo+'" data-lightbox="'+lightboxId+'"><img style="max-height: 100px;float:right; max-width:290px !important;" src="'+feature.properties.photo+'"></a>';
+					}
+					if (feature.properties && feature.properties.descriptif) {
+						popupContent += feature.properties.descriptif+' </p><br>';
+					}
+					if (feature.properties && feature.properties.site_web) {
+						popupContent += '<b>Plus d\'infos :</b> <a target="_blank" href="'+feature.properties.site_web+'"> cliquer ici</a><br>';
+					}
+				}
+				layer.bindPopup(popupContent, popupOptions);
+			}
+			
+			// Créer la couche des rivières
+			rivieresLayer = L.geoJson(rivieres_opth, {
+				style: riviereStyle,
+				onEachFeature: onEachRiviere
+			});
+			
+			// Ajouter la couche à la carte par défaut
+			rivieresLayer.addTo(map);
+			
+			// Ajouter une entrée dans le tableau des catégories pour les rivières
+			if (!tabCategories["Patrimoine Naturel"]) {
+				tabCategories["Patrimoine Naturel"] = new Array();
+			}
+			// On crée une sous-catégorie qui regroupera les rivières et les étangs
+				tabCategories["Patrimoine Naturel"]["Etangs et Rivières"] = true;
+		}
+		
+		function displayRouteLayer(routeLayerId) {
+			var isChecked = document.getElementById(routeLayerId).checked;
+			if ((isChecked==true)&&(!map.hasLayer(routeLayers[routeLayerId]))){
+				routeLayers[routeLayerId].addTo(map);
+			} else {
+				if ((isChecked==false)&&(map.hasLayer(routeLayers[routeLayerId]))){
+					map.removeLayer(routeLayers[routeLayerId]);
+				}
+			}
+		}
+	
+		function initialize() {
+		
+		/************************************************************************************************************************/
+		/******************************************************* LA CARTE *******************************************************/
+		/************************************************************************************************************************/
+
+//*******************CHARGEMENT DE LA CARTE***********************	
+			//définition des options de la carte : centre, zoom, zoom maximum
+			var point = new L.LatLng(48.81826349423801, 1.6032443265782088);
+			var optionsDefaut = {
+				center: point,
+				zoom: 11,
+				zoomControl : false,
+				maxZoom: 20,
+				// drawControl: true
+			};
+
+			//création de la carte et ajout du fond de carte
+			map = new L.Map('mymap', optionsDefaut);			
+
+			var mapbox = new L.TileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+				attribution: 'Accueil : <a href="https://informatique-m2i.fr/">M2i informatique </a>,Cartographie : <a href="https://www.linkedin.com/in/alexandreponchon/">Alexandre PONCHON </a> , <a href="https://www.openstreetmap.fr/">OSM</a>, iconographie : <a href="https://www.flaticon.com/fr/">Flaticon</a>'});
+			map.addLayer(mapbox);
+			
+			// Initialiser la couche des rivières
+			setupRivieresLayer();
+						 
+			//ajout des controles de la carte : zoom, échelle, contrôle des couches
+			map.addControl(L.control.zoom({position: 'topright'}));
+			map.addControl(L.control.scale({
+				position: 'bottomright',
+				imperial: false
+			}));	
+	
+//*******************ajout couche perimetre OTPH***************************************************************			
+
+				// Set up styles for subway lines
+			function fondStyle(feature) {
+				return {weight: 2,
+						opacity: 1,
+						color: '#9f5cc0',
+						fillColor: '#9f5cc0',
+						fillOpacity: 0.2,
+						interactive: false,
+				};
+			}          
+							
+				//ajout couche
+			var fondOPTH = L.geoJson(afond,{
+				style: fondStyle, 
+				
+			}).addTo(map);
+			
+			
+			//  fin couche  -----------------------------------------------
+//*******************ajout couche bassin versant ***************************************************************			
+
+				// Set up styles for subway lines
+			function fondStyleversant(feature) {
+				return {weight: 2,
+						opacity: 1,
+						
+						fillOpacity: 0.2,
+						interactive: false,
+				};
+			}          
+							
+				//ajout couche
+			var bversant = L.geoJson(json_COMMUNE_0,{
+				style: fondStyleversant, 
+				
+			})	
+			
+			
+			//  fin couche  -----------------------------------------------
+
+	// debut sentiers PDIPR ----------------------------------------
+				// contenu popup sentiers PDIPR
+				function onEachFeature2(feature, layer) {
+				var popupContent = "";
+				if (feature.properties && feature.properties.nom) {
+					popupContent += '<b><font size="4pt"><center>'+feature.properties.nom+'</center></font></b><br></h6>';
+					
+					if (feature.properties && feature.properties.photo) {
+						// Création d'un identifiant unique pour le diaporama basé sur l'ID de l'entité
+					var lightboxId = "poi-" + feature.properties.id;
+					
+					// Dans le popup, on affiche uniquement la première photo de "photo"
+					popupContent += '<a class="example-image-link" href="'+feature.properties.photo+'" data-lightbox="'+lightboxId+'"><img style="max-height: 100px;float:right; max-width:290px !important;" src="'+feature.properties.photo+'"></a></b>';
+					}
+					if (feature.properties && feature.properties.descriptif) {
+						popupContent += feature.properties.descriptif+' </p><br>';
+					}
+					if (feature.web && feature.properties.web) {
+						popupContent += '<b>Trace GPS :</b> <a target="_blank" href='+feature.properties.trace_gps+'> fichier GPX à télécharger </a><br>';
+					}
+					if (feature.properties && feature.properties.site_web) {
+						popupContent += '<b>Plus d\'infos :</b> <a target="_blank" href="'+feature.properties.site_web+'"> cliquer ici</a><br>';
+					}
+					
+					if (feature.properties && feature.properties.source) {
+						popupContent += '<b>Source des données :</b> '+feature.properties.source+'<br>';
+					}
+				}
+				layer.bindPopup(popupContent);
+			}
+			
+				// Crée un style ( une couleur différente pour chacun) pour les sentiers
+				// Set up styles for subway lines
+			function sentierStyle(feature) {
+				return {
+					
+					"size":15,
+					"weight": 4,
+					"opacity": 1,
+					"fillOpacity": 0,
+					"clickable": true
+				};
+			}          
+			/*				
+				//ajout sentiers PDIPR
+			var sentiers_pdipr = L.geoJson(rivieres_opth,{
+				style: sentierStyle, 
+				onEachFeature: onEachFeature2
+			}).addTo(map);
+			*/						
+
+//*****************CREATION DES PICTOS************************
+			function categorieToPicto(categorie) {
+				var file_name;
+				file_name = categorie.replace(/ /gi,'_');
+				file_name = file_name.toLowerCase();
+				file_name = file_name.replace(new RegExp(/[àáâãäå]/g),"a");
+				file_name = file_name.replace(new RegExp(/æ/g),"ae");
+				file_name = file_name.replace(new RegExp(/ç/g),"c");
+				file_name = file_name.replace(new RegExp(/[èéêë]/g),"e");
+				file_name = file_name.replace(new RegExp(/[ìíîï]/g),"i");
+				file_name = file_name.replace(new RegExp(/ñ/g),"n");
+				file_name = file_name.replace(new RegExp(/[òóôõö]/g),"o");
+				file_name = file_name.replace(new RegExp(/œ/g),"oe");
+				file_name = file_name.replace(new RegExp(/[ùúûü]/g),"u");
+				file_name = file_name.replace(new RegExp(/[ýÿ]/g),"y");
+				file_name = file_name.replace(new RegExp(/'/g),"\'");
+				return file_name;
+			}
+
+			function definePicto(categorie) {
+				return L.icon({
+					iconUrl: 'image/'+categorieToPicto(categorie)+'.png',
+					iconSize: [25,25], // taille de l'icone en pixels
+					iconAnchor: [13,13], // définition du point d'ancrage du picto par rapport au coin supérieur gauche
+					popupAnchor: [0,-13], // définition du point d'ancrage de l'infobulle associée au picto, par rapport à l''iconAnchor'
+				});
+			}
+			
+			// définition des paramètres d'affichage des données
+			var optionsAffichageDonnees = {
+				pointToLayer: function (feature, latlng) { // fonction qui permet de transformer l'entité récupérée dans le geoJson en marker sur la carte
+					if (((feature.properties.sous_cat) != null) && ((feature.properties.sous_cat) != ""))
+						return new L.Marker(latlng, {icon: definePicto(feature.properties.sous_cat)});
+				}
+			}
+			
+// *******************DEFINITION DE L'AFFICHAGE DE BASE DES DONNEES*************************
+			for(var i = 0; i < poi.features.length; i++) { // pour chaque entité du fichier geoJson POI
+				var currentFeature = poi.features[i]; // on récupère l'entité courante dans une variable currentFeature
+				// On récupère les catégories pour chaque feature
+				if (tabCategories[currentFeature.properties.categorie] == null) { // si la catégorie de l'entité courante n'est pas initialisée dans le tableau tabCategories
+					tabCategories[currentFeature.properties.categorie] = new Array(); // on lui affecte un nouveau tableau
+				}
+				if (currentFeature.properties.sous_cat!=null) { // si l'entité courante possède une sous catégorie
+					// Ne pas ajouter "Etangs" comme sous-catégorie distincte car elle est déjà incluse dans "Etangs et Rivières"
+					if (!(currentFeature.properties.categorie === "Patrimoine Naturel" && currentFeature.properties.sous_cat === "Etangs")) {
+						tabCategories[currentFeature.properties.categorie][currentFeature.properties.sous_cat] = true; // on lui affecte 'true' qui indiquera que les entités appartenant à cette sous-catégorie doivent être affichées sur la carte (au lancement de l'application)
+					}
+				}
+				else // si l'entité courante ne possède pas de sous-catégorie, c'est donc que sa catégorie ne possède pas de sous-catégories
+					tabCategories[currentFeature.properties.categorie]=true; // on affecte 'true' directement à cette catégorie dans le tableau tabCategories, ce qui indique que les entités appartenant à cette catégorie doivent être affichées sur la carte (au lancement de l'application)
+				
+				// On récupère les features et on créé leur couche associée. Pour le fonctionnement des clusters, on récupère le marker correspondant à chaque feature.
+				// L'index correspond à l'identifiant de la feature (supposé unique)
+				poiLayers[currentFeature.properties.id] = {
+					"feature": currentFeature,
+					"marker": optionsAffichageDonnees.pointToLayer(currentFeature, L.latLng(currentFeature.geometry.coordinates[1], currentFeature.geometry.coordinates[0]))
+				};
+				// définition des popup et de leur contenu
+				
+				
+				var popupContent = '<b><font size="4pt"><center>'+currentFeature.properties.nom+'</center></font></b><br>'; // on créé une variable correspondant au contenu de la popup. On commence par lui affecter l'intitulé de l'entité
+				if (currentFeature.properties.photo != null && currentFeature.properties.photo != "") { // si l'entité courante contient un lien ou plusieurs liens vers des photos
+					var photos = currentFeature.properties.photo; // On récupère les photos dans une variable
+					var tabPhotos = photos.split(";");
+					// Création d'un identifiant unique pour le diaporama basé sur l'ID de l'entité
+				var lightboxId = "poi-" + currentFeature.properties.id;
+				
+				
+
+				// Dans le popup, on affiche uniquement la première photo de "photo"
+				popupContent += '<a class="example-image-link" href="'+tabPhotos[0]+'" data-lightbox="'+lightboxId+'"><img style="max-height: 100px;float:right; max-width:290px !important;" src="'+tabPhotos[0]+'"></a>';
+				
+				// Si photo2 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo2 != null && currentFeature.properties.photo2 != "") {
+					var photos2 = currentFeature.properties.photo2;
+					var tabPhotos2 = photos2.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo2
+					for (var p = 0; p < tabPhotos2.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos2[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}
+				// Si photo3 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo3 != null && currentFeature.properties.photo3 != "") {
+					var photos3 = currentFeature.properties.photo3;
+					var tabPhotos3 = photos3.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo3
+					for (var p = 0; p < tabPhotos3.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos3[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}		
+					// Si photo4 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo4 != null && currentFeature.properties.photo4 != "") {
+					var photos4 = currentFeature.properties.photo4;
+					var tabPhotos4 = photos4.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo4
+					for (var p = 0; p < tabPhotos4.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos4[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}		
+				// Si photo5 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo5 != null && currentFeature.properties.photo5 != "") {
+					var photos5 = currentFeature.properties.photo5;
+					var tabPhotos5 = photos5.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo2
+					for (var p = 0; p < tabPhotos5.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos5[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}
+				// Si photo6 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo6 != null && currentFeature.properties.photo6 != "") {
+					var photos6 = currentFeature.properties.photo6;
+					var tabPhotos6 = photos6.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo6
+					for (var p = 0; p < tabPhotos3.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos6[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}		
+					// Si photo7 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo7 != null && currentFeature.properties.photo7 != "") {
+					var photos7 = currentFeature.properties.photo7;
+					var tabPhotos7 = photos7.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo7
+					for (var p = 0; p < tabPhotos7.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos7[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}	
+		// Si photo8 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo8 != null && currentFeature.properties.photo8 != "") {
+					var photos8 = currentFeature.properties.photo8;
+					var tabPhotos8 = photos8.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo8
+					for (var p = 0; p < tabPhotos8.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos8[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}
+				// Si photo9 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo9 != null && currentFeature.properties.photo9!= "") {
+					var photos9 = currentFeature.properties.photo9;
+					var tabPhotos9 = photos9.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo6
+					for (var p = 0; p < tabPhotos9.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos9[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}		
+					// Si photo10 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo10 != null && currentFeature.properties.photo10 != "") {
+					var photos10 = currentFeature.properties.photo10;
+					var tabPhotos10 = photos10.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo10
+					for (var p = 0; p < tabPhotos10.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos10[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}	
+				// Si photo11 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo11 != null && currentFeature.properties.photo11 != "") {
+					var photos11 = currentFeature.properties.photo11;
+					var tabPhotos11 = photos11.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo11
+					for (var p = 0; p < tabPhotos11.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos11[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}
+				// Si photo12 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo12 != null && currentFeature.properties.photo12!= "") {
+					var photos12 = currentFeature.properties.photo12;
+					var tabPhotos12 = photos12.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo12
+					for (var p = 0; p < tabPhotos12.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos12[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}		
+					// Si photo13 existe, on ajoute les photos supplémentaires au diaporama (mais elles ne seront pas visibles dans le popup)
+				if (currentFeature.properties.photo13 != null && currentFeature.properties.photo13 != "") {
+					var photos13 = currentFeature.properties.photo13;
+					var tabPhotos13 = photos13.split(";");
+					
+					// On ajoute des liens invisibles pour chaque photo de photo13
+					for (var p = 0; p < tabPhotos13.length; p++) {
+						popupContent += '<a class="example-image-link" href="'+tabPhotos13[p]+'" data-lightbox="'+lightboxId+'" style="display:none;"></a>';
+					}
+				}
+
+				}
+				if ((currentFeature.properties.descriptif != null) && (currentFeature.properties.descriptif != "")) // si l'entité courante a un descriptif non vide
+					popupContent += '<text-align="justify">'+currentFeature.properties.descriptif+'<br><br>'; // on ajoute ce descriptif au contenu de la popup
+
+				if ((currentFeature.properties.fondation_courant != null) && (currentFeature.properties.fondation_courant != "")) // si l'entité courante a une fondation
+					popupContent = '<a href="'+currentFeature.properties.fondation_courant+'" target="_blank"><img src="image/fondation.jpg" style="position:absolute; top:10px; left:10px; width:45px; height:45px; z-index:1000; float:left;" alt="Fondation"></a>' + popupContent; // on ajoute l'icône cliquable en haut à gauche
+				if ((currentFeature.properties.accessibilité != null) && (currentFeature.properties.accessibilité != ""))
+					popupContent += '<b>Accessible : </b>'+currentFeature.properties.accessibilité+'<br>';
+				
+					if ((currentFeature.properties.bassin == "Bassin Versant de la Vesgre"))
+				poiLayers[currentFeature.properties.id].marker.on("popupopen", function() {
+					var bassinv = new L.geoJson(json_COMMUNE_0,{
+						style: function(feature) {
+							return {
+								fillColor: "#bdc05c",
+								weight: 1,
+								opacity: 0.5,
+								color: "#bdc05c",
+								fillOpacity: 0.5
+							};
+						}
+					});
+					
+					var layerGroup1 =new L.LayerGroup();
+					layerGroup1.addLayer(bassinv);
+					layerGroup1.addTo(map);
+					map.on('popupclose',function(event){
+					map.removeLayer(layerGroup1);
+			})	})	
+				if ((currentFeature.properties.bassin == "Bassin Versant de la Vaucouleurs"))
+				poiLayers[currentFeature.properties.id].marker.on("popupopen", function() {
+					
+					var bassinv = new L.geoJson(json_COMMUNE_1,{
+						style: function(feature) {
+							return {
+								fillColor: "#306636",
+								weight: 1,
+								opacity: 0.5,
+								color: "#306636",
+								fillOpacity: 0.5
+							};
+						}
+					});
+					var layerGroup1 =new L.LayerGroup();
+					layerGroup1.addLayer(bassinv);
+					layerGroup1.addTo(map);
+					map.on('popupclose',function(event){
+					map.removeLayer(layerGroup1);
+			})	})	
+				
+				if ((currentFeature.properties.tel != null) && (currentFeature.properties.tel != ""))
+					popupContent += '<b>Tél: </b>'+currentFeature.properties.tel+'<br>';
+					
+				if ((currentFeature.properties.mail != null) && (currentFeature.properties.mail != ""))
+					popupContent += '<b>Email: </b>'+currentFeature.properties.mail+'<br>';
+
+				if ((currentFeature.properties.site_web != null) && (currentFeature.properties.site_web != "")) // si l'entité courante a un lien
+					popupContent += '<b>Plus d\'infos : </b><a target="_blank" href="'+currentFeature.properties.site_web+'"><i><u>cliquer ici</i></u></a><br>'; // on ajoute ce lien au contenu de la popup
+					if ((currentFeature.properties.site_web2 != null) && (currentFeature.properties.site_web2 != "")) // si l'entité courante a un lien
+					popupContent += '<b>Site Pierres d\'Histoire : </b><a target="_blank" href="'+currentFeature.properties.site_web2+'"><i><u>cliquer ici</i></u></a><br>'; // on ajoute ce lien au contenu de la popup
+				
+				// dans le tableau poiLayers, on affecte au marker de l'entité correspondante une popup dont le contenu vient d'être défini
+				
+				if ((currentFeature.properties.accessibilité != "Non"))
+					popupContent += '<b>Itinéraire : </b><a target="_blank" href="https://www.google.com/maps/dir//'+currentFeature.properties.Latitude+','+currentFeature.properties.Longitude+'"><i><u>cliquer ici</i></u></a><br>'
+					else (popupContent +="");
+				if (typeof(poiLayers[currentFeature.properties.id].marker)!="undefined") {
+				poiLayers[currentFeature.properties.id].marker.bindPopup (popupContent, popupOptions);
+				// ajoute un événement "popupopen" au marker qui va exécuter la fonction suivante une fois la popup ouverte
+				poiLayers[currentFeature.properties.id].marker.on("popupopen", function() {
+					// on lance le slider à l'ouverture de la popup
+					$(".rslides").responsiveSlides({
+						auto: true,
+						pager: true,
+						nav: false,
+						speed: 500,
+						namespace: "centered-btns"
+					});
+				});
+				// on ajoute à notre marker-cluster une couche contenant le marker correspondant à l'entité courante
+				markers.addLayer(poiLayers[currentFeature.properties.id].marker);
+				}
+			}
+			
+			map.addLayer(markers); // on ajoute notre 'markerClusterGroup' à la carte 
+
+//**********************LEGENDE***************************	
+
+			// Fonction qui retourne le code couleur correspondant à l'élément passé en paramètre de la forme CTPN, CMPN, AMAPN, AAPN, APAPN	
+			
+			// Replace the existing code that builds the selectCategories variable with this:
+var selectCategories = '';
+var orderedCategories = ['Patrimoine Architectural', 'Patrimoine Naturel','Patrimoine Mémoriel', 'Autres Points'];
+
+// First add the categories in the desired order
+for (var i = 0; i < orderedCategories.length; i++) {
+    var category = orderedCategories[i];
+    if (tabCategories[category]) {
+        selectCategories += '<li class="accordion" onclick="displayCategories(this)">&nbsp;' + category + '</li><div class="category-panel">';
+
+        for (j in tabCategories[category]) {
+            selectCategories += '<li style="margin-left:8px; font-size:13px;"><label style="all:unset; cursor: pointer;"><input id="' + j + '" type="checkbox" checked="true" onclick="onDisplayCheckBoxChanged(\'' + j.replace("'","\\'") + '\', \'' + category + '\');"> <img style="width:25px; height:25px;" src="image/'+categorieToPicto(j)+'.png">&nbsp' + j + '</label></li>';
+        }
+
+        selectCategories += '</div>';
+    }
+}
+
+// Then add any remaining categories that weren't in the ordered list
+for (i in tabCategories) {
+    if (orderedCategories.indexOf(i) === -1) {
+        selectCategories += '<li class="accordion" onclick="displayCategories(this)">&nbsp;' + i + '</li><div class="category-panel">';
+
+        for (j in tabCategories[i]) {
+            selectCategories += '<li style="margin-left:8px; font-size:13px;"><label style="all:unset; cursor: pointer;"><input id="' + j + '" type="checkbox" checked="true" onclick="onDisplayCheckBoxChanged(\'' + j.replace("'","\\'") + '\', \'' + i + '\');"> <img style="width:25px; height:25px;" src="image/'+categorieToPicto(j)+'.png">&nbsp' + j + '</label></li>';
+        }
+
+        selectCategories += '</div>';
+    }
+}
+
+$('#select-list').html(selectCategories);
+
+		
+
+			function resize() { // fonction qui redéfinit la taille de la carte et de la barre de titre
+	        	$('#mymap').css("height", ($(window).height() - $('.tab-bar').height()));
+				$('.tab-bar .middle').css("left", $('.left-small').width());
+				$('.tab-bar .middle').css("right", $('.right-small').width());
+				map.invalidateSize();
+			}
+			$(window).on("resize", resize); // appel de la fonction resize dès que la taille de la fenêtre est modifiée
+			resize(); // appel de la fonction resize au chargement de l'application
+			map.fitBounds(fondOPTH.getBounds()); // zoom automatique sur l'emprise du perimètre d'étude
+		
+		}//End initialize()
+
+
+		//************* GESTION DU DEPLIAGE DES CATEGORIES ****************
+		function displayCategories(clickedEl) {
+			/* Toggle between hiding and showing the active panel */
+			var panel = clickedEl.nextElementSibling;
+			if (panel.style.maxHeight) {
+					panel.style.maxHeight = null;
+			} else {
+				panel.style.maxHeight = panel.scrollHeight + "px";
+			}
+		}
+
+
+		//******************FONCTIONNEMENT DU MENU GAUCHE : FILTRER LES CATEGORIES********************	
+
+		// Fonction de mise à jour de l'affichage des pictos, appelée dès qu'il se passe une action au niveau du menu de gauche
+		function majAffichage() {
+			map.removeLayer(markers); // on commence par retirer de la carte tous les markers
+			for (idLayer in poiLayers) { // Pour chaque identifiant (clé) du tableau des features (entités)
+				var currentLayer = poiLayers[idLayer]; // on récupère l'entité courante dans une variable 'currentLayer'
+				// si l'entité courante possède une sous catégorie
+				if (tabCategories[currentLayer.feature.properties.categorie][currentLayer.feature.properties.sous_cat]!=null || 
+				    (currentLayer.feature.properties.categorie === "Patrimoine Naturel" && 
+				     currentLayer.feature.properties.sous_cat === "Etangs" && 
+				     tabCategories["Patrimoine Naturel"]["Etangs et Rivières"])) {
+					
+					// Cas spécial pour les étangs qui sont gérés par "Etangs et Rivières"
+					var shouldDisplay = false;
+					if (currentLayer.feature.properties.categorie === "Patrimoine Naturel" && 
+					    currentLayer.feature.properties.sous_cat === "Etangs") {
+					    shouldDisplay = tabCategories["Patrimoine Naturel"]["Etangs et Rivières"];
+					} else {
+					    // Comportement normal pour les autres sous-catégories
+					    shouldDisplay = tabCategories[currentLayer.feature.properties.categorie][currentLayer.feature.properties.sous_cat];
+					}
+					
+					// si la sous-catégorie de l'entité courante doit être affichée sur la carte
+					if (shouldDisplay) {
+						if (! markers.hasLayer(currentLayer.marker)) { // si le marker n'est pas encore affiché
+							markers.addLayer(currentLayer.marker); // on l'affiche
+						}
+					} else { // il ne doit pas être affiché
+						if (markers.hasLayer(currentLayer.marker)) {// s'il est affiché
+							markers.removeLayer(currentLayer.marker); // on l'enlève
+						}
+					}
+				} else { // sinon : l'entité courante ne possède pas de sous-catégorie, donc uniquement une catégorie-mère
+					// si la catégorie de l'entité courante doit être affichée sur la carte et qu'au moins une année rattachée à cette entité doit être affichée
+					if (tabCategories[currentLayer.feature.properties.categorie]==true) {
+						if (! markers.hasLayer(currentLayer.marker)) { // si le marker n'est pas encore affiché
+							markers.addLayer(currentLayer.marker); // on l'affiche
+						}
+					} else { // il ne doit pas être affiché
+						if (markers.hasLayer(currentLayer.marker)) {// s'il est affiché
+							markers.removeLayer(currentLayer.marker); // on l'enlève
+						}
+					}
+				}
+			}
+			map.addLayer(markers); // on ajoute les markers mis à jour à la carte
+		}
+		
+		// Fonction qui récupère la catégorie correspondant à une sous catégorie donnée
+		function getCategorie(sousCategorie) {
+			for (i in tabCategories) { // pour chaque catégorie du tableau tabCategories
+				for (j in tabCategories[i]) { // pour toutes les sous-catégorie de cette catégorie
+					if (j==sousCategorie) // si la sous-catégorie courante correspond à la sous-catégorie recherchée
+						return i; // on retourne sa catégorie-mère
+				}
+			}
+		}
+	
+
+		// Fonction qui définit les catégories et sous catégories qui doivent être affichées ou non dès qu'une checkbox à été cliquée
+		function onDisplayCheckBoxChanged(idChangedElement, parentCategoryId) {
+    tabCategories[parentCategoryId][idChangedElement] = document.getElementById(idChangedElement).checked; // on met à jour sa valeur dans tabCategories
+    
+    // Gestion spécifique pour la couche des rivières et des étangs
+    if (idChangedElement === "Etangs et Rivières" && parentCategoryId === "Patrimoine Naturel") {
+        if (document.getElementById(idChangedElement).checked) {
+            // Si la case est cochée, afficher les rivières
+            if (!map.hasLayer(rivieresLayer)) {
+                map.addLayer(rivieresLayer);
+            }
+            
+            // Afficher les étangs (qui sont des POI)
+            for(var i = 0; i < poi.features.length; i++) {
+                var currentFeature = poi.features[i];
+                if (currentFeature.properties.categorie === "Patrimoine Naturel" && 
+                    (currentFeature.properties.sous_cat === "Etangs" || 
+                     currentFeature.properties.sous_cat === "Rivières")) {
+                    // Marquer ces POI comme devant être affichés
+                    tabCategories["Patrimoine Naturel"][currentFeature.properties.sous_cat] = true;
+                }
+            }
+        } else {
+            // Si la case est décochée, masquer les rivières
+            if (map.hasLayer(rivieresLayer)) {
+                map.removeLayer(rivieresLayer);
+            }
+            
+            // Masquer les étangs (qui sont des POI)
+            for(var i = 0; i < poi.features.length; i++) {
+                var currentFeature = poi.features[i];
+                if (currentFeature.properties.categorie === "Patrimoine Naturel" && 
+                    (currentFeature.properties.sous_cat === "Etangs" || 
+                     currentFeature.properties.sous_cat === "Rivières")) {
+                    // Marquer ces POI comme ne devant pas être affichés
+                    tabCategories["Patrimoine Naturel"][currentFeature.properties.sous_cat] = false;
+                }
+            }
+        }
+    }
+    
+    majAffichage(); // appelle de la fonction de mise à jour de l'affichage des données sur la carte
+}
+
+
+		</script>
+	</head>
+	<body onload="initialize(); setTimeout(function(){if(typeof initLayers === 'function') initLayers();}, 1000);">
+		<div class="off-canvas-wrap offcanvas-overlap" data-offcanvas style="width: 100%; z-index:1;"> 
+			<nav class="tab-bar">
+				<section class="left-small" id="menu_gauche"> <!-- bouton menu gauche -->
+					<a class="left-off-canvas-toggle"><img id="toggleButton" class="hide-for-small-only" src="image/btn_filtrer_categories.png"><img class="show-for-small-only" src="image/btn_filtrer_categories_icon.png"></a>
+				</section>
+			</nav>
+			<div class="inner-wrap">
+				<!-- menu gauche -->
+				
+				<section id="left-panel" class="left-off-canvas-menu" style="background-color:rgba(89,79,84,0.8);">
+				<center><img src="image/logo-office-de-tourisme.jpg"/></center>
+				  <ul class="off-canvas-list menu-checkbox" id="select-list">
+				  </ul>
+				</section>
+				<section class="main-section">
+					<div id="mymap" style="width:100%;"></div>
+				</section>
+			</div>
+		</div>
+	
+		
+		
+
+		<script src="script/modernizr.js"></script>
+		<script src="script/jquery.js"></script>
+		<script src="script/responsiveslides.min.js"></script>
+		<!--<script src="js/foundation/vendor/jquery.cookie.js"></script>-->
+		<script src="script/foundation.min.js"></script>
+		<script>
+			$(document).foundation({
+			  offcanvas : {
+				// Sets method in which offcanvas opens.
+				// [ move | overlap_single | overlap ]
+				open_method: 'overlap', 
+				// Should the menu close when a menu link is clicked?
+				// [ true | false ]
+				close_on_click : true
+			  },
+			  // définition des options pour les bulles d'aide
+			  joyride: {
+				pre_ride_callback: function() { // avant l'affichage des bulles d'aide, on ouvre les menus gauche et droit
+					$('.off-canvas-wrap').foundation('offcanvas', 'show', 'offcanvas-overlap');
+				},
+				post_ride_callback: function() { 
+					onRideEnded();
+				}
+			  }
+			})
+
+			
+
+		
+
+		</script>
+	</body>
+</html>
